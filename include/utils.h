@@ -1,7 +1,3 @@
-//
-// Created by damitha on 1/29/25.
-//
-
 #ifndef UTILS_H
 #define UTILS_H
 

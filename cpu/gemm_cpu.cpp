@@ -1,8 +1,5 @@
-//
-// Created by damitha on 1/29/25.
-//
 #include <chrono>
-#include "utils.h"
+#include "../include/utils.h"
 
 void gemm_cpu(float* A, float* B, float *C, int M, int N, int K) {
 	for (int i = 0; i < M; i++) {

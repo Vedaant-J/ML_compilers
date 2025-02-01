@@ -1,7 +1,4 @@
-//
-// Created by damitha on 1/29/25.
-//
-#include "utils.h"
+#include "../include/utils.h"
 #include <cuda_runtime.h>
 
 #define CUDA_CHECK(func)                                                     	   \

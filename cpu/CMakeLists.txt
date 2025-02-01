@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
-project(cs521_mp1 LANGUAGES CUDA CXX)
-
-set(CMAKE_CUDA_STANDARD 14)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+project(cs521_mp1 LANGUAGES CXX)
 
 find_package(OpenMP)
 if (OPENMP_FOUND)
@@ -14,7 +11,3 @@ else ()
 endif ()
 
 add_executable(mp1_cpu gemm_cpu.cpp)
-add_executable(mp1_gpu gemm_gpu.cu)
-#set_target_properties(mp1 PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-
-#target_link_libraries(mp1 CUDA::cudart)
