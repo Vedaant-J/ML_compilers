@@ -6,10 +6,18 @@
 
 void fillRandom(float* array, int totalDim){
 #pragma omp parallel for
-	for (int i = 0; i < totalDim; i++) {
-		array[i] = rand() % 10;
-	}
+  for (int i = 0; i < totalDim; i++) {
+    array[i] = rand() % 10;
+  }
 }
+
+void initialize(float * array, int totalDim){
+#pragma omp parallel for
+  for (int i = 0; i < totalDim; i++) {
+    array[i] = 0;
+  }
+}
+
 
 class Ref{
   public:

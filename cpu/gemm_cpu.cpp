@@ -1,7 +1,33 @@
 #include <chrono>
 #include "../include/utils.h"
 
-void gemm_cpu(float* A, float* B, float *C, int M, int N, int K) {
+#define CHECK(name) \
+  std::cout << "checking " << #name << std::endl;		\
+  name(ref.A, ref.B, refC, Ref::M, Ref::N, Ref::K);		\
+  if (!ref.checkRef(refC)){					\
+    std::cerr << #name << ": check ref failed!" << std::endl;	\
+  };								\
+  fillRandom(refC, Ref::M * Ref::N);				
+  
+#define TIME(name) \
+  for (int i = 0; i < 5; i++)						\
+    {									\
+      name(A, B, C, M, N, K);						\
+    }									\
+  auto start_time_ ## name = std::chrono::high_resolution_clock::now(); \
+  for (int i = 0; i < 100; i++)						\
+    {									\
+      name(A, B, C, M, N, K);						\
+    }									\
+  auto end_time_ ## name = std::chrono::high_resolution_clock::now();	\
+  std::chrono::duration<double, std::milli> duration_ ## name = end_time_ ## name - start_time_ ## name; \
+  std::cout << "Time taken for GEMM (CPU," << #name <<"): " << duration_ ## name.count() << "ms" << std::endl; 
+
+
+// reference CPU implementation of the GEMM kernel
+// note that this implementation is naive and will run for longer for larger
+// graphs
+void gemm_cpu_o0(float* A, float* B, float *C, int M, int N, int K) {
 	for (int i = 0; i < M; i++) {
 		for (int j = 0; j < N; j++) {
 			C[i * N + j] = 0;
@@ -12,22 +38,30 @@ void gemm_cpu(float* A, float* B, float *C, int M, int N, int K) {
 	}
 }
 
-// The scafolding for optimized GEMM implementations
-void gemm_cpu_opt(float* A, float* B, float *C, int M, int N, int K) {
+// Your optimized implementations go here
+// note that for o4 you don't have to change the code, but just the compiler flags. So, you can use o3's code for that part
+void gemm_cpu_o1(float* A, float* B, float *C, int M, int N, int K) {
 
 }
 
+void gemm_cpu_o2(float* A, float* B, float *C, int M, int N, int K) {
+
+}
+
+void gemm_cpu_o3(float* A, float* B, float *C, int M, int N, int K) {
+
+}
+
+
 int main(int argc, char* argv[]) {
 	if (argc < 3) {
-		std::cout << "Usage: mp1 <M> <N> <K>" << std::endl;
-		return 1;
+	  std::cout << "Usage: mp1 <M> <N> <K>" << std::endl;
+	  return 1;
 	}
 
 	int M = atoi(argv[1]);
 	int N = atoi(argv[2]);
 	int K = atoi(argv[3]);
-
-	// int runs = atoi(argv[3]);
 
 	float* A = new float[M * K]();
 	float* B = new float[K * N]();
@@ -36,42 +70,23 @@ int main(int argc, char* argv[]) {
 	fillRandom(A, M * K);
 	fillRandom(B, K * N);
 
-	/// CPU Implementation
-    // Check if the result is correct
+	// Check if the kernel results are correct
+	// note that even if the correctness check fails all optimized kernels will run.
+	// We are not exiting the program at failure at this point.
+	// It is a good idea to add more correctness checks to your code.
+	// We may (at discretion) verify that your code is correct.
 	float* refC = new float[Ref::M * Ref::N]();
-    auto ref = Ref();
-	gemm_cpu(ref.A, ref.B, refC, Ref::M, Ref::N, Ref::K);
-    if (!ref.checkRef(refC)){
-      std::cerr << "check ref failed!" << std::endl;
-    };
-	// Skip the first 5 runs
-	for (int i = 0; i < 5; i++)
-	{
-		gemm_cpu(A, B, C, M, N, K);
-	}
-	auto start_time = std::chrono::high_resolution_clock::now();
-	for (int i = 0; i < 100; i++)
-	{
-		gemm_cpu(A, B, C, M, N, K);
-	}
-	auto end_time = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double, std::milli> duration = end_time - start_time;
-	std::cout << "Time taken for GEMM (CPU,unoptimized): " << duration.count() << "ms" << std::endl;
-
-	/// Optimized CPU Implementation
-	// Skip the first 5 runs.
-	for (int i = 0; i < 5; i++)
-	{
-		gemm_cpu_opt(A, B, C, M, N, K);
-	}
-	auto start_time_opt = std::chrono::high_resolution_clock::now();
-	for (int i = 0; i < 100; i++)
-	{
-		gemm_cpu_opt(A, B, C, M, N, K);
-	}
-	auto end_time_opt = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double, std::milli> duration_opt = end_time_opt - start_time_opt;
-	std::cout << "Time taken for GEMM (CPU,optimized): " << duration_opt.count() << "ms" << std::endl;
+	auto ref = Ref();
+	CHECK(gemm_cpu_o0)
+	CHECK(gemm_cpu_o1)
+	CHECK(gemm_cpu_o2)
+	CHECK(gemm_cpu_o3)
+	delete[] refC;
+	
+	TIME(gemm_cpu_o0)
+	TIME(gemm_cpu_o1)
+	TIME(gemm_cpu_o2)
+	TIME(gemm_cpu_o3)
 
 	delete[] A;
 	delete[] B;
