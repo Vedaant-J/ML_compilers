@@ -13,8 +13,8 @@ else ()
     message(FATAL_ERROR "Need OpenMP")
 endif ()
 
-add_executable(mp1_cpu gemm_cpu.cpp)
-add_executable(mp1_gpu gemm_gpu.cu)
+add_executable(mp1_cpu ../cpu/gemm_cpu.cpp)
+add_executable(mp1_gpu ../gpu/gemm_gpu.cu)
 #set_target_properties(mp1 PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 #target_link_libraries(mp1 CUDA::cudart)
