@@ -86,7 +86,7 @@ def test_correctness_conv2d_kernel(
                             print(
                                 f"Output mismatch for input_channels: {input_channels}, \
                         output_channels: {output_channels}, kernel_size: {kernel_size}, batch_size: {batch_size},\
-                         image_dims: {image_dims}, use_bias: {use_bias}, use_maxpool: {use_maxpool}"
+                         image_dims: {image_dims}, use_bias: {use_bias}"
                             )
 
                             return False
@@ -122,7 +122,7 @@ def test_performance_conv2d_kernel(
     dtype_str = "float32" if dtype == np.float32 else "float16"
 
     bench_func = nki.benchmark(
-        warmup=5, iters=20, save_neff_name=f"file_pool_{dtype_str}.neff"
+        warmup=5, iters=20, save_neff_name=f"file_{dtype_str}.neff"
     )(kernel)
     text_trap = io.StringIO()
     sys.stdout = text_trap
@@ -204,7 +204,7 @@ if __name__ == "__main__":
     else:
         print("Failed 😢")
 
-    print("Comparing performance with reference kernel (no maxpool, float32)...")
+    print("Comparing performance with reference kernel (float32)...")
     test_result = test_performance_conv2d_kernel(conv2d, dtype = np.float32)
     if test_result:
         print("Performance test passed 😍")
@@ -212,9 +212,9 @@ if __name__ == "__main__":
         print("Performance test failed 😢")
 
     if args.profile is not None:
-        save_trace(args.profile + "_float32", "file_pool_1_float32.neff")
+        save_trace(args.profile + "_float32", "file_float32.neff")
     
-    print("Comparing performance with reference kernel (no maxpool, float16)...")
+    print("Comparing performance with reference kernel (float16)...")
     test_result = test_performance_conv2d_kernel(conv2d, dtype = np.float16)
     if test_result:
         print("Performance test passed 😍")
@@ -222,4 +222,4 @@ if __name__ == "__main__":
         print("Performance test failed 😢")
 
     if args.profile is not None:
-        save_trace(args.profile + "_float16", "file_pool_1_float16.neff")
+        save_trace(args.profile + "_float16", "file_float16.neff")
