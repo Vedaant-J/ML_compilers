@@ -1,5 +1,9 @@
 # Part 3: Optimizing convolution 2D on Neural Network Accelerators (40 points) #
 
+## License & Copyright ##
+
+The `npu` part is modified from https://github.com/stanford-cs149/asst4-trainium.
+
 ## Overview ##
 
 In this assignment, you will learn how to implement a convolution layer for the [AWS Trainium](https://aws.amazon.com/ai/machine-learning/trainium/) architecture, which features multiple tensor-oriented accelerated processing engines as well as software-managed on-chip storage that provides these engines high-bandwidth access to data. 
@@ -522,7 +526,3 @@ Students also need to submit a write up briefly describing their implementations
 For the correctness test, we use two types of images. The first type is a small image with dimensions of 32×16. The second type is a large image with dimensions of 224×224, which exceeds the capacity of the SBUF and cannot fit within it.
 
 For the performance test, we evaluate the performance using float16 and float32 precision. We will compare the performance of your program with the reference solution. You will pass the test if your p99 latency is within 150% of the reference latency.
-
-## License & Copyright ##
-
-This `npu` part is modified from https://github.com/stanford-cs149/asst4-trainium.
