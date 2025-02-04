@@ -14,28 +14,26 @@ Parameters:
     X: the input tensor
     W: the weights of the convolution filters.
     bias: the biases of the convolution filters.
-    pool_size: the size of the pool filter and pool stride.
 
 expect: X.shape == [batch_size, in_channels, input_height, input_width]
 expect: W.shape == [out_channels, in_channels, filter_height, filter_width]
 expect: bias.shape == [out_channels]
 expect: filter_height == filter_width
-expect: pool_size == 1 || pool_size == 2
 expect: input_channels % 128 == 0
 expect: output_channels % 128 == 0
 
 out_height = input_height - filter_height + 1
 out_width = input_width - filter_width + 1
 
-out_pool_height = out_height // pool_size
-out_pool_width = out_width // pool_size
+out_pool_height = out_height
+out_pool_width = out_width
 
 The shape of the output should be [batch_size, out_channels, out_pool_height, out_pool_width]
 
 """
 
 @nki.jit
-def fused_conv2d_maxpool(X, W, bias, pool_size=1):
+def conv2d(X, W, bias):
 
     batch_size, in_channels, input_height, input_width = X.shape
     out_channels, in_channels_, filter_height, filter_width = W.shape
@@ -48,8 +46,8 @@ def fused_conv2d_maxpool(X, W, bias, pool_size=1):
     out_height = input_height - filter_height + 1
     out_width = input_width - filter_width + 1
 
-    out_pool_height = out_height // pool_size
-    out_pool_width = out_width // pool_size
+    out_pool_height = out_height
+    out_pool_width = out_width
     
     # Can assume multiple of 128 to avoid using mask
     assert in_channels % 128 == 0
@@ -71,8 +69,7 @@ def fused_conv2d_maxpool(X, W, bias, pool_size=1):
     # Process the images in batches
     for b in nl.affine_range(batch_size):
         raise RuntimeError("Please fill your implementation of computing convolution"
-                           " of X[b] with the weights W and bias b, followed by a"
-                           " maxpool and store the result in X_out[b]")
+                           " of X[b] with the weights W and bias b and store the result in X_out[b]")
 
     return X_out
 
