@@ -28,14 +28,14 @@
 // note that this implementation is naive and will run for longer for larger
 // graphs
 void gemm_cpu_o0(float* A, float* B, float *C, int M, int N, int K) {
-	for (int i = 0; i < M; i++) {
-		for (int j = 0; j < N; j++) {
-			C[i * N + j] = 0;
-			for (int k = 0; k < K; k++) {
-                C[i * N + j]  += A[i * K + k]  * B[k * N + j];
-			}
-		}
-	}
+  for (int j = 0; j < N; j++) {
+    for (int i = 0; i < M; i++) {    
+      C[i * N + j] = 0;
+      for (int k = 0; k < K; k++) {
+	C[i * N + j]  += A[i * K + k]  * B[k * N + j];
+      }
+    }
+  }
 }
 
 // Your optimized implementations go here
