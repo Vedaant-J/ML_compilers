@@ -8,7 +8,7 @@ from neuronxcc.nki import baremetal
 
 
 """
-A fused convolution - maxpool kernel that you need to implement.
+A convolution kernel that you need to implement.
 
 Parameters:
     X: the input tensor
