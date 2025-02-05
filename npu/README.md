@@ -16,7 +16,7 @@ Overall, this assignment will:
 
 ## Environment Setup ##
 
-You will be programming and testing your code on an AWS VM featuring Trainium accelerators. Please follow the instructions in [cloud_readme.md](cloud_readme.md) for setting up a machine to run the assignment.
+You will be programming and testing your code on an AWS VM featuring Trainium accelerators. Please follow the instructions in [cloud_readme.md](../cloud_readme.md) for setting up a machine to run the assignment.
 
 Once you have logged in to your AWS machine, you should download the assignment starter code from the course Github using:
 
@@ -38,7 +38,7 @@ First, let's get you acquainted with Trainium.
 The `Trn1.2xlarge` instance used in this assignment features a single Trainium device, which comprises of two NeuronCores, as shown in image below. Each core is equipped with its own dedicated HBM (High-bandwidth memory). Each NeuronCore can be considered a standalone processing unit, which contains its own on-chip storage as well as a collection of specialized compute engines for performing 128x128 matrix operations (tensor engine), 128-wide vector operations (vector engine), etc. While each Trainium device has two NeuronCores, in this assignment we will be writing kernels that execute on a single NeuronCore.
 
 <p align="center">
-  <img src="handout/trainium_chip.png" width=40% height=40%>
+  <img src="../handout/trainium_chip.png" width=40% height=40%>
 </p>
 
 More details on the four distinct compute engines that exist in a NeuronCore can be found [here](https://awsdocs-neuron.readthedocs-hosted.com/en/latest/general/arch/neuron-hardware/neuron-core-v2.html#neuroncores-v2-arch).
@@ -48,7 +48,7 @@ More details on the four distinct compute engines that exist in a NeuronCore can
 On Trainium, the memory hierarchy consists of four levels: **host memory (DRAM)**, **device memory (HBM)**, and two fast on-chip memory types, **SBUF (State Buffer)** and **PSUM (Partial Sum Buffer)**. These levels are shown in the figure below.
 
 <p align="center">
-  <img src="handout/memory_hierarchy.png" width=80% height=80%>
+  <img src="../handout/memory_hierarchy.png" width=80% height=80%>
 </p>
 
 * __Host memory__, is the memory address space of the host machine, and is external to the Trainium device. You can think of host memory on Trainium as similar to host memory in a CUDA programming environment.
@@ -59,7 +59,7 @@ On Trainium, the memory hierarchy consists of four levels: **host memory (DRAM)*
 In Trainium, all computations require loading data from HBM into SBUF, which is accessible by all engine types. Intermediate data generated during kernel execution by the compute engines is also stored in SBUF. Once the computation is complete, the results are written back to HBM. 
 
 <p align="center">
-  <img src="handout/neuron_core.png" width=40% height=40%>
+  <img src="../handout/neuron_core.png" width=40% height=40%>
 </p>
 
 Recall that in a system that features a traditional data cache, decisions about what data from off-chip memories is replicated and stored in on-chip storage are made by the cache (based on cache organization and eviction policies). Software loads data at a given memory address, and the hardware is responsible for fetching that data from memory and managing what data is stored in the cache for efficient future access. In other words, from the perspective of software correctness, the cache does not exist--it is a hardware implementation detail. 
@@ -105,7 +105,7 @@ In the code above...
 - `nl.store` stores the results back to HBM.
 
 <p align="center">
-  <img src="handout/sbuf_layout.png" width=60% height=60%>
+  <img src="../handout/sbuf_layout.png" width=60% height=60%>
 </p>
 
 **When looking at the code above, notice that NKI operations operate on tensors, not scalar values.** Specifically, the on-chip memories, SBUF and PSUM, store data that is arranged as 2D memory arrays. The first dimension of the 2D array is called the "partition dimension" `P`. The second dimension is referred to as the "free dimension" `F`.  NeuronCores are able load and process data along the partition dimension in parallel, *but the architecture also places a restriction that the size of the partition dimension is 128 or smaller.*  In other words, 
@@ -168,8 +168,8 @@ Although the first dimension (partition dimension) of a SBUF tensor can be no gr
 In order to improve DMA transfer overhead, we will need to reshape our vectors so they are two-dimensional tiles, rather than linearized arrays. In Assignment 3, we worked with CUDA thread blocks partitioned across an entire image, and in order to map CUDA threads to image pixels we flattened our grid by calculating a thread’s global linear index. You can think about the reshaping process for the NeuronCore as the inverse: the goal is to turn a single-dimension vector into a dense 2D matrix. NumPy comes with a built-in [reshape function](https://numpy.org/doc/stable/reference/generated/numpy.reshape.html) allowing you to reshape arrays into the shape of your choosing. 
 
 <p align="center">
-  <img src="handout/non_reshaped_DMA.png" width=48% height=48%>
-  <img src="handout/reshaped_DMA.png" width=48% height=48%>
+  <img src="../handout/non_reshaped_DMA.png" width=48% height=48%>
+  <img src="../handout/reshaped_DMA.png" width=48% height=48%>
 </p>
 
 
@@ -334,7 +334,7 @@ Now that you’ve learned how to efficiently move data on a NeuronCore, it is ti
 Before you begin, we will demonstrate how to perform matrix operations on a NeuronCore. As discussed earlier, a NeuronCore is equipped with various compute engines, each optimized for specific types of arithmetic operations. In Part 0, you worked with the Vector Engine, which specializes in vector operations like vector addition. However in Part 1, you not only need to perform vector operations, but you will also need to perform matrix operations. The Tensor Engine on Trainium is specifically designed to accelerate these matrix operations, such as matrix multiplication and matrix transpose. 
 
 <p align="center">
-  <img src="handout/tensor_engine.png" width=60% height=60%>
+  <img src="../handout/tensor_engine.png" width=60% height=60%>
 </p>
 
 The above image depicts the architecture of the Tensor Engine. The Tensor Engine is built around a 128x128 [systolic processing array](https://gfxcourses.stanford.edu/cs149/fall24/lecture/hwprog/slide_10) which streams matrix data input from SBUF (on-chip storage) and writes the output to PSUM (also on-chip storage). Like SBUF, PSUM is fast on-chip memory, however it is much smaller than SBUF (2MiB vs 24 MiB) and serves a dedicated purpose of storing matrix multiplication results computed by the Tensor Engine. The Tensor Engine is able to read-add-write to every address in PSUM. Therefore, PSUM is useful when executing large matrix multiplications in a tiled manner, where the results of each matrix multiply are accumulated into the same output tile. 
@@ -428,13 +428,13 @@ In summary, this tiled implementation handles large matrix dimensions by breakin
 Let’s now turn our focus to the convolution layer. Recall the [convolution operation](https://gfxcourses.stanford.edu/cs149/fall24content/media/dnneval/10_dnneval.pdf). It involves sliding a filter across an __input feature map__, where at each position the filter interacts with the overlapping input region. In each overlapping region, element-wise multiplications are performed between the filter weights and the input region region values. The results of these element-wise multiplications are then added together, producing a single value for the corresponding position in the output feature map. This process captures local spatial patterns and relationships among neighboring features.
 
 <p align="center">
-  <img src="handout/convolution.png" width=55% height=55%>
+  <img src="../handout/convolution.png" width=55% height=55%>
 </p>
 
 The input feature map often consists of multiple channels. For example, an image usually contains three RGB channels (red, green, and blue). In this case, instead of only computing a weighted sum over the 2D spatial region, the convolution computes the weighted sum of both the 2D spatial region and channel depth. The image below depicts an example of a convolution layer being performed on a 32x32 input image with three RGB channels. In the image, a 5x5x3 filter is applied on the 32x32x3 image to produce a 28x28x1 output feature map.
 
 <p align="center">
-  <img src="handout/cs231n_convolution.png" width=55% height=55%>
+  <img src="../handout/cs231n_convolution.png" width=55% height=55%>
   <br>
   <em>Source: CS231N https://cs231n.stanford.edu/slides/2024/lecture_5.pdf </em>
 </p>
@@ -444,7 +444,7 @@ __As seen in the image, each filter produces a single channel of output.__ To ge
 The input and output of the convolution operator can be summarized as follows (ignoring bias for now):
 
 <p align="left">
-  <img src="handout/conv2d_summary.png" width=50% height=50%>
+  <img src="../handout/conv2d_summary.png" width=50% height=50%>
 </p>
 
 Additionally, a [convolution layer](https://pytorch.org/docs/stable/generated/torch.nn.functional.conv2d.html) can take in additional hyper-parameters such as padding and stride in addition to an input feature map, filter weights, and scalar bias. However, we have *simplified the constraints of your convolution* to make implementation easier for you. You need **only to support a stride of 1**, and you do **not have to worry about padding** as we will pad the input feature map for you before it is passed into your kernel.
@@ -456,19 +456,19 @@ Now, our objective is to map the convolution operator onto thee high-performance
 **Conv2D:**
 
 <p align="center">
-  <img src="handout/conv2d_formula.png" width=65% height=65%>
+  <img src="../handout/conv2d_formula.png" width=65% height=65%>
 </p>
 
 **Matrix Multiplication:**
 
 <p align="center">
-  <img src="handout/matmul_formula.png" width=25% height=25%>
+  <img src="../handout/matmul_formula.png" width=25% height=25%>
 </p>
 
 In class we discussed one way to convert convolution with many filters into a single large matrix multiplication.  We'll do the same thing here, but take a different approach that yields an efficient implementation on Trainium.  In this approach the convolution operation is formulated as a series of independent matrix multiplications. A visual illustration of this formulation is shown below.
 
 <p align="center">
-  <img src="handout/conv2d_matmul_diagram.png" width=100% height=100%>
+  <img src="../handout/conv2d_matmul_diagram.png" width=100% height=100%>
 </p>
 
 In this approach, the height and width dimensions of the input feature map are flattened into a single dimension, reshaping the input to `(Height × Width) × Input Channels​`. This reshaped input is then multiplied by each position of the filters, where `i` and `j` respectively range from `0` to `Filter Height - 1` and from `0` to `Filter Width - 1`. Each filter slice has a shape of `Input Channels × Output Channels`, and the resulting matrix multiplication contracts along the `Input Channels` dimension. To align the input with each filter slice, the input must be shifted by an offset corresponding to the filter’s current position `(i, j)`. The results of these matrix multiplications are accumulated to produce the output tensor.

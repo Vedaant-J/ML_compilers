@@ -24,17 +24,33 @@ For performance testing, you will need to run this assignment on a VM instance o
   <img src="handout/search-ami.png" alt="Search AMI" width="60%">
 </p>
 
-4. Search for `Deep Learning AMI Neuron (Ubuntu 22.04) 20241221` in `Community AMIs` and make sure to click on `Shared with me`. Click `Select`.
+4. For `gpu` part, search for `Deep Learning AMI GPU CUDA 11.4.3 (Ubuntu 20.04) 20230328` in `Community AMIs`. For `npu` part, search for `Deep Learning AMI Neuron (Ubuntu 22.04) 20241221` in `Community AMIs`. Click `Select`.
+
+<p align="center">
+  <img src="handout/select-ami-gpu.png" alt="Select AMI" width="100%">
+  <br>
+  <em>Deep Learning AMI GPU CUDA 11.4.3 (Ubuntu 20.04) 20230328</em>
+</p>
 
 <p align="center">
   <img src="handout/select-ami.png" alt="Select AMI" width="100%">
+  <br>
+  <em>Deep Learning AMI Neuron (Ubuntu 22.04) 20241221</em>
 </p>
 
 
-5. Choose the `trn1.2xlarge` instance type.
+5. For `gpu` part, choose the `g5.2xlarge` instance type. For `npu` part, choose the `trn1.2xlarge` instance type.
+
+<p align="center">
+  <img src="handout/choose-instance-gpu.png" alt="Choose instance type" width="80%">
+  <br>
+  <em>g5.2xlarge instance</em>
+</p>
 
 <p align="center">
   <img src="handout/choose-instance.png" alt="Choose instance type" width="80%">
+  <br>
+  <em>trn1.2xlarge instance</em>
 </p>
 
 6. You will need a key pair to access your instance. In `Key pair (login)` section, click `Create a new key pair` and give it whatever name you'd like. This will download a keyfile to your computer called `<key_name>.pem` which you will use to login to the VM instance you are about to create. Finally, you can launch your instance.
