@@ -39,7 +39,7 @@
 	cudaEvent_t start_ ## name, end_ ## name; \
 	cudaEventCreate(&start_ ## name); \
 	cudaEventCreate(&end_ ## name); \
-	for (int i = 0; i < 5; i++) \
+	for (int i = 0; i < 2; i++) \
 	{ \
 		name(d_A_ ## name, d_B_ ## name, d_C_ ## name, M, N, K); \
 	} \
@@ -49,7 +49,7 @@
 	} \
 	cudaDeviceSynchronize(); \
 	cudaEventRecord(start_ ## name); \
-	for (int i = 0; i < 100; i++) \
+	for (int i = 0; i < 3; i++) \
 	{ \
 		name(d_A_ ## name, d_B_ ## name, d_C_ ## name, M, N, K); \
 	} \
