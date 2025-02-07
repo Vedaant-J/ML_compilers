@@ -10,12 +10,12 @@
   fillRandom(refC, Ref::M * Ref::N);				
   
 #define TIME(name) \
-  for (int i = 0; i < 5; i++)						\
+  for (int i = 0; i < 2; i++)						\
     {									\
       name(A, B, C, M, N, K);						\
     }									\
   auto start_time_ ## name = std::chrono::high_resolution_clock::now(); \
-  for (int i = 0; i < 100; i++)						\
+  for (int i = 0; i < 3; i++)						\
     {									\
       name(A, B, C, M, N, K);						\
     }									\
