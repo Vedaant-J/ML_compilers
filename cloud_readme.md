@@ -7,7 +7,7 @@ For performance testing, you will need to run this assignment on a VM instance o
 
 ## Creating a VM ##
 
-1. Log in to the [AWS EC2 dashboard](https://us-east-2.console.aws.amazon.com/console/home?region=us-east-2). On the top right of the page, make sure you are on the `us-east-2` region.
+1. Log in to the [AWS EC2 dashboard](https://us-west-2.console.aws.amazon.com/console/home?region=us-west-2). On the top right of the page, make sure you are on the `us-west-2` region.
 <p align="center">
   <img src="handout/switch-region.png" alt="Switch region" width="25%">
 </p>
