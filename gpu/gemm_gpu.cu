@@ -19,6 +19,13 @@
 	CUDA_CHECK(cudaMalloc(&d_Cref_ ## name, Ref::M * Ref::N * sizeof(float))); \
 	CUDA_CHECK(cudaMemcpy(d_Aref_ ## name, ref.A, Ref::M * Ref::K * sizeof(float), cudaMemcpyHostToDevice)); \
 	CUDA_CHECK(cudaMemcpy(d_Bref_ ## name, ref.B, Ref::K * Ref::N * sizeof(float), cudaMemcpyHostToDevice)); \
+	float* d_Cref_INI_ ## name = new float[M * N](); \
+	for (int i = 0; i < Ref::M; i++) { \
+		for (int j = 0; j < Ref::N; j++) { \
+			d_Cref_INI_ ## name[i * Ref::N + j] = 0; \
+		} \
+	} \
+	CUDA_CHECK(cudaMemcpy(d_Cref_ ## name, d_Cref_INI_ ## name, Ref::M * Ref::N * sizeof(float), cudaMemcpyHostToDevice)); \
 	name(d_Aref_ ## name, d_Bref_ ## name, d_Cref_ ## name, Ref::M, Ref::N, Ref::K); \
 	cudaError_t err_c_ ## name = cudaGetLastError(); \
 	if (err_c_ ## name != cudaSuccess) { \
@@ -39,24 +46,34 @@
 	cudaEvent_t start_ ## name, end_ ## name; \
 	cudaEventCreate(&start_ ## name); \
 	cudaEventCreate(&end_ ## name); \
+	float* d_C_INI_ ## name = new float[M * N](); \
+	for (int i = 0; i < Ref::M; i++) { \
+		for (int j = 0; j < Ref::N; j++) { \
+			d_C_INI_ ## name[i * Ref::N + j] = 0; \
+		} \
+	} \
 	for (int i = 0; i < 2; i++) \
 	{ \
+		CUDA_CHECK(cudaMemcpy(d_C_ ## name, d_C_INI_ ## name, Ref::M * Ref::N * sizeof(float), cudaMemcpyHostToDevice)); \
 		name(d_A_ ## name, d_B_ ## name, d_C_ ## name, M, N, K); \
 	} \
 	cudaError_t err_t_ ## name = cudaGetLastError(); \
 	if (err_t_ ## name != cudaSuccess) { \
 		std::cerr << "CUDA Error: " << cudaGetErrorString(err_t_ ## name) << std::endl; \
 	} \
-	cudaDeviceSynchronize(); \
-	cudaEventRecord(start_ ## name); \
+	float milliseconds_ ## name = 0; \
 	for (int i = 0; i < 3; i++) \
 	{ \
+		CUDA_CHECK(cudaMemcpy(d_C_ ## name, d_C_INI_ ## name, Ref::M * Ref::N * sizeof(float), cudaMemcpyHostToDevice)); \
+		cudaDeviceSynchronize(); \
+		cudaEventRecord(start_ ## name); \
 		name(d_A_ ## name, d_B_ ## name, d_C_ ## name, M, N, K); \
+		cudaEventRecord(end_ ## name); \
+		cudaEventSynchronize(end_ ## name); \
+		float milliseconds_ ## i = 0; \
+		cudaEventElapsedTime(&milliseconds_ ## i, start_ ## name, end_ ## name); \
+		milliseconds_ ## name += milliseconds_ ## i; \
 	} \
-	cudaEventRecord(end_ ## name); \
-	cudaEventSynchronize(end_ ## name); \
-	float milliseconds_ ## name = 0; \
-	cudaEventElapsedTime(&milliseconds_ ## name, start_ ## name, end_ ## name); \
 	cudaMemcpy(C, d_C_ ## name, M * N * sizeof(float), cudaMemcpyDeviceToHost); \
 	std::cout << "Time taken for GEMM (GPU, " << #name <<"): " << milliseconds_ ## name << "ms" << std::endl; \
 	cudaFree(d_A_ ## name); \
@@ -67,7 +84,6 @@ __global__ void gemm_gpu_o0_kernel(float* A, float* B, float *C, int M, int N, i
 	if (threadIdx.x == 0 && blockIdx.x == 0) {
 		for (int i = 0; i < M; i++) {
 			for (int j = 0; j < N; j++) {
-				C[i * N + j] = 0;
 				for (int k = 0; k < K; k++) {
 					C[i * N + j]  += A[i * K + k]  * B[k * N + j];
 				}

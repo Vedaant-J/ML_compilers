@@ -3,6 +3,11 @@
 
 #define CHECK(name) \
   std::cout << "checking " << #name << std::endl;		\
+  for (int j = 0; j < N; j++) {		\
+    for (int i = 0; i < M; i++) {    		\
+      refC[i * N + j] = 0;		\
+	}		\
+  }		\
   name(ref.A, ref.B, refC, Ref::M, Ref::N, Ref::K);		\
   if (!ref.checkRef(refC)){					\
     std::cerr << #name << ": check ref failed!" << std::endl;	\
@@ -12,16 +17,28 @@
 #define TIME(name) \
   for (int i = 0; i < 2; i++)						\
     {									\
+	  for (int j = 0; j < N; j++) {		\
+	    for (int k = 0; k < M; k++) {    		\
+	      C[k * N + j] = 0;		\
+	    }		\
+	  }		\
       name(A, B, C, M, N, K);						\
     }									\
-  auto start_time_ ## name = std::chrono::high_resolution_clock::now(); \
+  double time_ ## name; \
   for (int i = 0; i < 3; i++)						\
     {									\
+	  for (int j = 0; j < N; j++) {		\
+	    for (int k = 0; k < M; k++) {    		\
+	      C[k * N + j] = 0;		\
+	    }		\
+	  }		\
+	  auto start_time_ ## name = std::chrono::high_resolution_clock::now(); \
       name(A, B, C, M, N, K);						\
+	  auto end_time_ ## name = std::chrono::high_resolution_clock::now();	\
+  	  std::chrono::duration<double, std::milli> duration_ ## name = end_time_ ## name - start_time_ ## name; \
+	  time_ ## name += duration_ ## name.count(); \
     }									\
-  auto end_time_ ## name = std::chrono::high_resolution_clock::now();	\
-  std::chrono::duration<double, std::milli> duration_ ## name = end_time_ ## name - start_time_ ## name; \
-  std::cout << "Time taken for GEMM (CPU," << #name <<"): " << duration_ ## name.count() << "ms" << std::endl; 
+  std::cout << "Time taken for GEMM (CPU," << #name <<"): " << time_ ## name << "ms" << std::endl; 
 
 
 // reference CPU implementation of the GEMM kernel
@@ -29,8 +46,7 @@
 // graphs
 void gemm_cpu_o0(float* A, float* B, float *C, int M, int N, int K) {
   for (int j = 0; j < N; j++) {
-    for (int i = 0; i < M; i++) {    
-      C[i * N + j] = 0;
+    for (int i = 0; i < M; i++) {
       for (int k = 0; k < K; k++) {
 	C[i * N + j]  += A[i * K + k]  * B[k * N + j];
       }
