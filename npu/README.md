@@ -526,3 +526,7 @@ Students also need to submit a write up briefly describing their implementations
 For the correctness test, we use two types of images. The first type is a small image with dimensions of 32×16. The second type is a large image with dimensions of 224×224, which exceeds the capacity of the SBUF and cannot fit within it.
 
 For the performance test, we evaluate the performance using float16 and float32 precision. We will compare the performance of your program with the reference solution. You will pass the test if your p99 latency is within 150% of the reference latency.
+
+## FAQs
+
+Please refer to an advanced FAQ here: https://github.com/EmilyWebber/nki-samples/blob/main/contributed/advanced_FAQs.md.
