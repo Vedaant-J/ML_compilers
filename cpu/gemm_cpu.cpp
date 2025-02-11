@@ -5,7 +5,7 @@
   std::cout << "checking " << #name << std::endl;		\
   for (int j = 0; j < Ref::N; j++) {		\
     for (int i = 0; i < Ref::M; i++) {    		\
-      refC[i * N + j] = 0;		\
+      refC[i * Ref::N + j] = 0;		\
 	}		\
   }		\
   name(ref.A, ref.B, refC, Ref::M, Ref::N, Ref::K);		\
