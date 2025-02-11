@@ -3,8 +3,8 @@
 
 #define CHECK(name) \
   std::cout << "checking " << #name << std::endl;		\
-  for (int j = 0; j < N; j++) {		\
-    for (int i = 0; i < M; i++) {    		\
+  for (int j = 0; j < Ref::N; j++) {		\
+    for (int i = 0; i < Ref::M; i++) {    		\
       refC[i * N + j] = 0;		\
 	}		\
   }		\
