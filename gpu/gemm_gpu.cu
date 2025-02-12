@@ -1,6 +1,8 @@
 #include "../include/utils.h"
 #include <cuda_runtime.h>
 
+#define NUM_RUNS 10
+
 #define CUDA_CHECK(func)                                                     	   \
 	do {                                                                           \
 		cudaError_t status = (func);                                               \
@@ -62,7 +64,7 @@
 		std::cerr << "CUDA Error: " << cudaGetErrorString(err_t_ ## name) << std::endl; \
 	} \
 	float milliseconds_ ## name = 0; \
-	for (int i = 0; i < 3; i++) \
+	for (int i = 0; i < NUM_RUNS; i++) \
 	{ \
 		CUDA_CHECK(cudaMemcpy(d_C_ ## name, d_C_INI_ ## name, Ref::M * Ref::N * sizeof(float), cudaMemcpyHostToDevice)); \
 		cudaDeviceSynchronize(); \
@@ -75,7 +77,7 @@
 		milliseconds_ ## name += milliseconds_ ## i; \
 	} \
 	cudaMemcpy(C, d_C_ ## name, M * N * sizeof(float), cudaMemcpyDeviceToHost); \
-	std::cout << "Time taken for GEMM (GPU, " << #name <<"): " << milliseconds_ ## name << "ms" << std::endl; \
+	std::cout << "Time taken for GEMM (GPU, " << #name <<"): " << milliseconds_ ## name / (float)NUM_RUNS << "ms" << std::endl; \
 	cudaFree(d_A_ ## name); \
 	cudaFree(d_B_ ## name); \
 	cudaFree(d_C_ ## name);
