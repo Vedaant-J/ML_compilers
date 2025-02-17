@@ -49,14 +49,14 @@
 	cudaEventCreate(&start_ ## name); \
 	cudaEventCreate(&end_ ## name); \
 	float* d_C_INI_ ## name = new float[M * N](); \
-	for (int i = 0; i < Ref::M; i++) { \
-		for (int j = 0; j < Ref::N; j++) { \
-			d_C_INI_ ## name[i * Ref::N + j] = 0; \
+	for (int i = 0; i < M; i++) { \
+		for (int j = 0; j < N; j++) { \
+			d_C_INI_ ## name[i * N + j] = 0; \
 		} \
 	} \
 	for (int i = 0; i < 2; i++) \
 	{ \
-		CUDA_CHECK(cudaMemcpy(d_C_ ## name, d_C_INI_ ## name, Ref::M * Ref::N * sizeof(float), cudaMemcpyHostToDevice)); \
+		CUDA_CHECK(cudaMemcpy(d_C_ ## name, d_C_INI_ ## name, M * N * sizeof(float), cudaMemcpyHostToDevice)); \
 		name(d_A_ ## name, d_B_ ## name, d_C_ ## name, M, N, K); \
 	} \
 	cudaError_t err_t_ ## name = cudaGetLastError(); \
@@ -66,7 +66,7 @@
 	float milliseconds_ ## name = 0; \
 	for (int i = 0; i < NUM_RUNS; i++) \
 	{ \
-		CUDA_CHECK(cudaMemcpy(d_C_ ## name, d_C_INI_ ## name, Ref::M * Ref::N * sizeof(float), cudaMemcpyHostToDevice)); \
+		CUDA_CHECK(cudaMemcpy(d_C_ ## name, d_C_INI_ ## name, M * N * sizeof(float), cudaMemcpyHostToDevice)); \
 		cudaDeviceSynchronize(); \
 		cudaEventRecord(start_ ## name); \
 		name(d_A_ ## name, d_B_ ## name, d_C_ ## name, M, N, K); \
