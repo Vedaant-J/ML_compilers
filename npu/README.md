@@ -496,8 +496,6 @@ for i in range(Filter_Height):
 ### Implementing an NKI kernel for Convolution
 You will implement an NKI kernel for the convolution layer. Below, we will outline the detailed specifications and requirements for your convolution layer.
 
-The diagram above illustrates the calculations your convolution kernel would perform on a 6x6 input with a single input channel. The convolution kernel performs a standard convolution with one filter and stride of 1.
-
 Your convolution kernel takes in the following parameters:
   - `X` - A batch of input images. `X` has shape `(Batch Size, Input Channels, Input Height, Input Width)`. You are guaranteed that `Input Channels` will be a multiple of 128.
   - `W` - The convolution filter weights. `W` has shape `(Output Channels, Input Channels, Filter Height, Filter Width)`. You are guaranteed that `Filter Height == Filter Width`. You are also guaranteed that `Output Channels` is a multiple of 128. Moreover, you can assume that the size of the weights would always be such that it can completely fit inside SBUF.
