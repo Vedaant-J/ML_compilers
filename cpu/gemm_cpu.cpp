@@ -16,7 +16,7 @@
     {									\
       name(A, B, C, M, N, K);						\
     }									\
-  std::chrono::duration<double, std::milli> time_ ## name;		\
+  std::chrono::duration<double, std::milli> time_##name(0);		\
   for (int i = 0; i < NUM_RUNS; i++)					\
     {									\
       initialize(C, M * N);						\
