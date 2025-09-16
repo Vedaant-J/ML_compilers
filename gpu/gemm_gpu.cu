@@ -1,7 +1,9 @@
 #include "../include/utils.h"
 #include <cuda_runtime.h>
+#include <cublas_v2.h>
 
 #define NUM_RUNS 10
+#define BLOCK_SIZE 32
 
 #define CUDA_CHECK(func)                                                     	   \
 	do {                                                                           \
@@ -104,27 +106,132 @@ void gemm_gpu_o0(float* A, float* B, float* C, int M, int N, int K)
 
 // The scafolding for optimized GEMM implementations
 __global__ void gemm_gpu_o1_kernel(float* A, float* B, float *C, int M, int N, int K) {
+	int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < M && col < N) {
+        float sum = 0.0f;
+        for (int k = 0; k < K; ++k) {
+            sum += A[row * K + k] * B[k * N + col];
+        }
+        C[row * N + col] = sum;
+    }
+	
 }
 void gemm_gpu_o1(float* A, float* B, float* C, int M, int N, int K)
 {
-	// Init block and grid size
+
+	dim3 threadsPerBlock(16, 16);
+    dim3 numBlocks((N + 15) / 16, (M + 15) / 16);
+
+    // Launch the kernel with the full grid.
+    gemm_gpu_o1_kernel<<<numBlocks, threadsPerBlock>>>(A, B, C, M, N, K);
 }
 
 __global__ void gemm_gpu_o2_kernel(float* A, float* B, float *C, int M, int N, int K) {
+	__shared__ float A_tile[BLOCK_SIZE][BLOCK_SIZE];
+	__shared__ float B_tile[BLOCK_SIZE][BLOCK_SIZE];
+
+	int row = blockIdx.y * blockDim.y + threadIdx.y;
+	int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+	float sum = 0.0f; // accumluate and assign beccause memset takes long
+
+	for (int k0=0; k0 < K; k0 += BLOCK_SIZE) {
+		if (row < M && (k0+threadIdx.x) < K)
+			A_tile[threadIdx.y][threadIdx.x] = A[row * K + k0 + threadIdx.x];
+		else
+			A_tile[threadIdx.y][threadIdx.x] = 0.0f;
+		if (col < N && (k0+threadIdx.y) < K)
+			B_tile[threadIdx.y][threadIdx.x] = B[(k0 + threadIdx.y) * N + col];
+		else
+			B_tile[threadIdx.y][threadIdx.x] = 0.0f;
+
+		// the 32x32 threads should have loaded the needed numbers in tiles by now I think
+		__syncthreads();
+
+		for (int k1 = 0; k1 < BLOCK_SIZE; k1++) {
+			sum += A_tile[threadIdx.y][k1] * B_tile[k1][threadIdx.x];
+		}
+		__syncthreads();
+	}
+	if (row < M && col < N)
+		C[row * N + col] = sum;
+
 }
 void gemm_gpu_o2(float* A, float* B, float* C, int M, int N, int K)
 {
 	// Init block and grid size
+	dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE);
+	dim3 numBlocks((N + BLOCK_SIZE - 1) / BLOCK_SIZE, (M + BLOCK_SIZE - 1) / BLOCK_SIZE);
+
+	gemm_gpu_o2_kernel<<<numBlocks, blockSize>>>(A, B, C, M, N, K);
 }
 
 __global__ void gemm_gpu_o3_kernel(float* A, float* B, float *C, int M, int N, int K) {
+	__shared__ float A_tile[BLOCK_SIZE][BLOCK_SIZE];
+	__shared__ float B_tile[BLOCK_SIZE][BLOCK_SIZE];
+
+	int row = blockIdx.y * blockDim.y + threadIdx.y;
+	int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+	float sum = 0.0f; // accumluate and assign beccause memset takes long
+
+	for (int k0=0; k0 < K; k0 += BLOCK_SIZE) {
+		if (row < M && (k0+threadIdx.x) < K)
+			A_tile[threadIdx.y][threadIdx.x] = A[row * K + k0 + threadIdx.x];
+		else
+			A_tile[threadIdx.y][threadIdx.x] = 0.0f;
+		if (col < N && (k0+threadIdx.y) < K)
+			B_tile[threadIdx.y][threadIdx.x] = B[(k0 + threadIdx.y) * N + col];
+		else
+			B_tile[threadIdx.y][threadIdx.x] = 0.0f;
+
+		// the 32x32 threads should have loaded the needed numbers in tiles by now I think
+		__syncthreads();
+
+		for (int k1 = 0; k1 < BLOCK_SIZE; k1++) {
+			sum += A_tile[threadIdx.y][k1] * B_tile[k1][threadIdx.x];
+		}
+		__syncthreads();
+	}
+	if (row < M && col < N)
+		C[row * N + col] = sum;
 }
 void gemm_gpu_o3(float* A, float* B, float* C, int M, int N, int K)
 {
 	// Init block and grid size
+	dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE);
+	dim3 numBlocks((N + BLOCK_SIZE - 1) / BLOCK_SIZE, (M + BLOCK_SIZE - 1) / BLOCK_SIZE);
+
+	gemm_gpu_o2_kernel<<<numBlocks, blockSize>>>(A, B, C, M, N, K);
 }
 
+void gemm_cublas(float* d_A, float* d_B, float* d_C, int M, int N, int K) {
+    // 1. Create a handle to the cuBLAS library context
+    cublasHandle_t handle;
+    cublasCreate(&handle);
 
+    // 2. Set scalar multipliers for C = alpha * A*B + beta*C
+    const float alpha = 1.0f;
+    const float beta = 0.0f;
+
+    // 3. Call the cuBLAS SGEMM function
+    // Note the trick for row-major matrices: we compute C = B * A
+    // and pass the dimensions as (N, M, K) instead of (M, N, K).
+    cublasSgemm(handle,
+                CUBLAS_OP_N, CUBLAS_OP_N,     // Don't transpose A or B
+                N, M, K,                     // Dimensions: M_B, N_A, K_A/B
+                &alpha,                      // alpha
+                d_B, N,                      // Pointer to B (as A), and its leading dimension
+                d_A, K,                      // Pointer to A (as B), and its leading dimension
+                &beta,                       // beta
+                d_C, N                       // Pointer to C, and its leading dimension
+               );
+
+    // 4. Destroy the cuBLAS handle
+    cublasDestroy(handle);
+}
 
 int main(int argc, char* argv[]) {
 	if (argc < 3) {
@@ -148,16 +255,18 @@ int main(int argc, char* argv[]) {
         // Check if implementation is correct
 	auto ref = Ref();
 	float* refC = new float[Ref::M * Ref::N]();
- 	CHECK(gemm_gpu_o0)
-	CHECK(gemm_gpu_o1)
-	CHECK(gemm_gpu_o2)
+ 	// CHECK(gemm_gpu_o0)
+	// CHECK(gemm_gpu_o1)
+	// CHECK(gemm_gpu_o2)
 	CHECK(gemm_gpu_o3)
+	CHECK(gemm_cublas)
 
 	// Actual run
- 	TIME(gemm_gpu_o0)
-	TIME(gemm_gpu_o1)
-	TIME(gemm_gpu_o2)
+ 	// TIME(gemm_gpu_o0)
+	// TIME(gemm_gpu_o1)
+	// TIME(gemm_gpu_o2)
 	TIME(gemm_gpu_o3)
+	TIME(gemm_cublas)
 
 	cudaFreeHost(A);
 	cudaFreeHost(B);
