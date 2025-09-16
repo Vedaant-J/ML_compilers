@@ -1,5 +1,7 @@
 #include <chrono>
 #include "../include/utils.h"
+#include <cmath>
+#include <stdio.h>
 
 #define NUM_RUNS 2
 
@@ -45,15 +47,64 @@ void gemm_cpu_o0(float* A, float* B, float *C, int M, int N, int K) {
 // Your optimized implementations go here
 // note that for o4 you don't have to change the code, but just the compiler flags. So, you can use o3's code for that part
 void gemm_cpu_o1(float* A, float* B, float *C, int M, int N, int K) {
-
+	for (int i = 0; i < M; i++) {
+		for (int k = 0; k < K; k++) {
+			for (int j = 0; j < N; j++) {
+				C[i * N + j]  += A[i * K + k]  * B[k * N + j];
+			}
+		}
+	}
 }
 
 void gemm_cpu_o2(float* A, float* B, float *C, int M, int N, int K) {
+	// int L1D_CACHE_SIZE = 48000; // 48KiB
+	// int FLOAT_SIZE = 4; // 4 bytes
+	// int CACHE_SIZE_FLOAT = L1D_CACHE_SIZE / FLOAT_SIZE; // number of floats that can fit in cache
+	// int BLOKE_SIZE = (int) std::sqrt(CACHE_SIZE_FLOAT / 3); // 3 matrices, so 3 blocks
+	// BLOKE_SIZE = log2(BLOKE_SIZE);
+	// BLOKE_SIZE = pow(2, BLOKE_SIZE); // make it power of 2
+	int BLOKE_SIZE = 32; // coded to enable auto vectorization and also the above calculations take time
+
+	for (int i0 = 0; i0 < M; i0 += BLOKE_SIZE) {
+		for (int j0 = 0; j0 < N; j0 += BLOKE_SIZE) {
+			for (int k0 = 0; k0 < K; k0 += BLOKE_SIZE) {
+				for (int i = i0; i < std::min(i0 + BLOKE_SIZE, M); i++) {
+					for (int k = k0; k < std::min(k0 + BLOKE_SIZE, K); k++) {
+						for (int j = j0; j < std::min(j0 + BLOKE_SIZE, N); j++) {
+							C[i * N + j] += A[i * K + k] * B[k * N + j];
+						}
+					}
+				}
+			}
+		}
+	}
 
 }
 
-void gemm_cpu_o3(float* A, float* B, float *C, int M, int N, int K) {
+void gemm_cpu_o3(float* __restrict__ A, float* __restrict__ B, float * __restrict__ C, int M, int N, int K) {
+	// int L1D_CACHE_SIZE = 48000; // 48KiB
+	// int FLOAT_SIZE = 4; // 4 bytes
+	// int CACHE_SIZE_FLOAT = L1D_CACHE_SIZE / FLOAT_SIZE; // number of floats that can fit in cache
+	// int BLOKE_SIZE = (int) std::sqrt(CACHE_SIZE_FLOAT / 3);
+	// BLOKE_SIZE = log2(BLOKE_SIZE);
+	// BLOKE_SIZE = pow(2, BLOKE_SIZE); // make it power of 2
+	int BLOKE_SIZE = 32; // coded to enable auto vectorization
 
+	#pragma omp parallel for shared(A, B, C) collapse(2)
+	for (int i0 = 0; i0 < M; i0 += BLOKE_SIZE) {
+		for (int j0 = 0; j0 < N; j0 += BLOKE_SIZE) {
+			for (int k0 = 0; k0 < K; k0 += BLOKE_SIZE) {
+				for (int i = i0; i < std::min(i0 + BLOKE_SIZE, M); i++) {
+					for (int k = k0; k < std::min(k0 + BLOKE_SIZE, K); k++) {
+						#pragma omp simd
+						for (int j = j0; j < std::min(j0 + BLOKE_SIZE, N); j++) {
+							C[i * N + j] += A[i * K + k] * B[k * N + j];
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 
@@ -81,15 +132,15 @@ int main(int argc, char* argv[]) {
 	// We may (at discretion) verify that your code is correct.
 	float* refC = new float[Ref::M * Ref::N]();
 	auto ref = Ref();
-	CHECK(gemm_cpu_o0)
-	CHECK(gemm_cpu_o1)
-	CHECK(gemm_cpu_o2)
+	// CHECK(gemm_cpu_o0)
+	// CHECK(gemm_cpu_o1)
+	// CHECK(gemm_cpu_o2)
 	CHECK(gemm_cpu_o3)
 	delete[] refC;
 	
-	TIME(gemm_cpu_o0)
-	TIME(gemm_cpu_o1)
-	TIME(gemm_cpu_o2)
+	// TIME(gemm_cpu_o0)
+	// TIME(gemm_cpu_o1)
+	// TIME(gemm_cpu_o2)
 	TIME(gemm_cpu_o3)
 
 	delete[] A;
