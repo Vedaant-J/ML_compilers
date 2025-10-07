@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.profiler import profile, record_function, ProfilerActivity
+import time
+import json
 
 class ConvModel(nn.Module):
     def __init__(self, H, W, in_channels=3, out_channels=8, kernel_size=3, stride=1, padding=1):
@@ -19,8 +21,8 @@ class ConvModel(nn.Module):
         # TO DO: Define static shapes here. 
 
         # Precompute output size
-        self.out_h = (self.H + 2 * self.padding - self.kernel_size) / self.stride + 1
-        self.out_w = (self.W + 2 * self.padding - self.kernel_size) / self.stride + 1
+        self.out_h = int((self.H + 2 * self.padding - self.kernel_size) / self.stride + 1)
+        self.out_w = int((self.W + 2 * self.padding - self.kernel_size) / self.stride + 1)
 
         self.weight = nn.Parameter(torch.randn(out_channels, in_channels, kernel_size, kernel_size))
         self.bias = nn.Parameter(torch.zeros(out_channels))
@@ -69,7 +71,7 @@ class ConvModel(nn.Module):
         weight_flat = self.weight.view(C_out, -1)
         weight_flat = weight_flat.contiguous().t()  # (C*KH*KW, C_out)
         # TO DO: 3) perform tiled matmul after required reshaping is done.
-        TILE_SIZE = 16
+        TILE_SIZE = 128
         out = torch.zeros((N, int(self.out_h*self.out_w), C_out), device=x.device)
         for i in range(0, int(self.out_h*self.out_w), TILE_SIZE):
             for j in range(0, C_out, TILE_SIZE):
@@ -102,3 +104,54 @@ if __name__ == "__main__":
     conv_ref = F.conv2d(x, model.weight, model.bias, stride=1, padding=1)
     print("PyTorch --- shape check:", out.shape == conv_ref.shape)
     print("PyTorch --- correctness check:", torch.allclose(out, conv_ref, atol=1e-4))
+    torch.manual_seed(0)
+    parameters_try = {
+        'H_W': [8, 16, 32, 64, 128],
+        'K_size': [3, 5, 7]
+    }
+    profile_results = {}
+
+    print("--- Starting Plain PyTorch GPU Benchmark ---")
+    iterations = 10
+    for H_W in parameters_try['H_W']:
+        for K_size in parameters_try['K_size']:
+            key = f"H/W:{H_W}_K:{K_size}"
+            profile_results[key] = {}
+            N, C, H, W = 1, 3, H_W, H_W
+            out_channels = 8
+            kernel_size = K_size
+            
+            x = torch.randn(N, C, H, W).cuda()
+            model = ConvModel(H, W, in_channels=C, out_channels=out_channels, kernel_size=kernel_size).cuda().eval()
+            
+            start_compile_time = time.time()
+            compiled_model = model
+            
+            _ = compiled_model(x) 
+            torch.cuda.synchronize()
+            compile_time = time.time() - start_compile_time
+            profile_results[key]['compile_time'] = compile_time
+            print(f"PyTorch --- H/W: {H_W}, K: {K_size}, Compile time: {compile_time:.4f} seconds")
+
+            start_event = torch.cuda.Event(enable_timing=True)
+            end_event = torch.cuda.Event(enable_timing=True)
+            
+            
+            for _ in range(2):
+                _ = compiled_model(x)
+            
+            start_event.record()
+            for _ in range(iterations):
+                _ = compiled_model(x)
+            end_event.record()
+            torch.cuda.synchronize()
+
+            elapsed_time_ms = start_event.elapsed_time(end_event)
+            profile_results[key]['avg_inference_time_ms'] = elapsed_time_ms / iterations
+            profile_results[key]['total_inference_time_ms'] = elapsed_time_ms
+            
+            with open("pytorch_profile_results.json", "w") as f:
+                json.dump(profile_results, f, indent=4)
+            print(f"PyTorch --- H/W: {H_W}, K: {K_size}, Average inference time: {elapsed_time_ms / iterations:.4f} ms")
+
+    print("\n--- Benchmark Complete. Results saved to pytorch_profile_results.json ---")

@@ -7,6 +7,9 @@ import torch
 from myconv import ConvModel
 import jax.profiler
 import torch
+import time
+import json
+
 
 # Create a log directory
 logdir = "./jax_trace"
@@ -77,6 +80,20 @@ def conv2d_manual_jax(x, weight, bias, stride=1, padding=1):
 
     return out
 
+def benchmark_jax_fn(fn, *args, iterations=100):
+    _ = fn(*args).block_until_ready()
+    
+    start_time = time.time()
+    for _ in range(iterations):
+        output = fn(*args)
+    
+    output.block_until_ready()
+    end_time = time.time()
+    
+    total_time_s = end_time - start_time
+    avg_time_ms = (total_time_s / iterations) * 1000
+    return avg_time_ms, total_time_s*1000
+
 if __name__ == "__main__":
     # Instantiate PyTorch model
     H, W = 33, 33
@@ -108,3 +125,43 @@ if __name__ == "__main__":
     print("JAX --- shape check:", out_jax.shape == conv_ref.shape)
     out_jax = torch.from_numpy(np.array(out_jax))
     print("JAX --- correctness check:", torch.allclose(out_jax, conv_ref, atol=1e-1))
+    
+    parameters_try = {
+        'H_W': [8, 16, 32, 64, 128],
+        'K_size': [3, 5, 7]
+    }
+    profile_results = {}
+    
+    print("--- Starting JAX GPU Benchmark ---")
+
+    for H_W in parameters_try['H_W']:
+        for K_size in parameters_try['K_size']:
+            key = f"H/W:{H_W}_K:{K_size}"
+            profile_results[key] = {}
+            N, C, H, W = 1, 3, H_W, H_W
+            out_channels = 8
+            kernel_size = K_size
+            
+            torch_model = ConvModel(H, W, in_channels=C, out_channels=out_channels, kernel_size=kernel_size)
+            x_torch = torch.randn(N, C, H, W)
+
+            x_jax = jnp.array(x_torch.numpy())
+            weight_jax = jnp.array(torch_model.weight.detach().cpu().numpy())
+            bias_jax = jnp.array(torch_model.bias.detach().cpu().numpy())
+
+            start_compile_time = time.time()
+            conv2d_jit = jit(conv2d_manual_jax)
+            _ = conv2d_jit(x_jax, weight_jax, bias_jax).block_until_ready()
+            compile_time = time.time() - start_compile_time
+            profile_results[key]['compile_time'] = compile_time
+            print(f"JAX --- H/W: {H_W}, K: {K_size}, Compile time: {compile_time:.4f} seconds")
+
+            avg_inference_time_ms,total_inference_time_ms = benchmark_jax_fn(
+                conv2d_jit, x_jax, weight_jax, bias_jax, iterations=10
+            )
+            profile_results[key]['avg_inference_time_ms'] = avg_inference_time_ms
+            profile_results[key]['total_inference_time_ms'] = total_inference_time_ms
+
+            # with open("jax_profile_results.json", "w") as f:
+            #     json.dump(profile_results, f, indent=4)
+            print(f"JAX --- H/W: {H_W}, K: {K_size}, Average inference time: {avg_inference_time_ms:.4f} ms")
